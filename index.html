@@ -3512,5 +3512,96 @@ async function pobierzDaneYouTube() {
 
 pobierzDaneYouTube();
 </script>
+
+<script>
+// NEPTYK EMPIRE — Spotify API
+const SPOTIFY_CLIENT_ID = '3752bcc69d884dae90d23b02522fee23';
+const SPOTIFY_CLIENT_SECRET = '10cab84367894b08a5f3bd14c332b76d';
+const SPOTIFY_ARTIST_ID = '71piNRPJqYL4Clr1Wo0xTZ';
+
+async function pobierzTokenSpotify() {
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': 'Basic ' + btoa(SPOTIFY_CLIENT_ID + ':' + SPOTIFY_CLIENT_SECRET)
+    },
+    body: 'grant_type=client_credentials'
+  });
+  const data = await res.json();
+  return data.access_token;
+}
+
+async function pobierzDaneSpotify() {
+  try {
+    const token = await pobierzTokenSpotify();
+
+    // Dane artysty
+    const res = await fetch(`https://api.spotify.com/v1/artists/${SPOTIFY_ARTIST_ID}`, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const artysta = await res.json();
+
+    const followers = artysta.followers?.total || 0;
+    const popularity = artysta.popularity || 0;
+    const nazwaArtysty = artysta.name || 'Neptyk';
+
+    console.log('✅ Spotify API działa!');
+    console.log('Nazwa:', nazwaArtysty);
+    console.log('Followers:', followers);
+    console.log('Popularność:', popularity);
+
+    // Karta "Spotify — Miesięczni słuchacze"
+    document.querySelectorAll('.sc').forEach(card => {
+      const label = card.querySelector('.sp');
+      const val = card.querySelector('.sv');
+      const sub = card.querySelector('.slb');
+      if (!label || !val || !sub) return;
+      if (label.textContent.includes('Spotify') && sub.textContent.includes('słuchacze')) {
+        val.textContent = formatLiczba(followers);
+        card.style.borderColor = 'rgba(29,185,84,.35)';
+      }
+    });
+
+    // Ostatnie single/albumy
+    const resAlbumy = await fetch(
+      `https://api.spotify.com/v1/artists/${SPOTIFY_ARTIST_ID}/albums?include_groups=single,album&market=PL&limit=5`,
+      { headers: { 'Authorization': 'Bearer ' + token } }
+    );
+    const dataAlbumy = await resAlbumy.json();
+
+    if (dataAlbumy.items && dataAlbumy.items.length > 0) {
+      console.log('🎵 Ostatnie wydania:');
+      dataAlbumy.items.forEach((a, i) => {
+        console.log(`  ${i+1}. ${a.name} (${a.release_date})`);
+      });
+    }
+
+    // Top tracki
+    const resTopTracki = await fetch(
+      `https://api.spotify.com/v1/artists/${SPOTIFY_ARTIST_ID}/top-tracks?market=PL`,
+      { headers: { 'Authorization': 'Bearer ' + token } }
+    );
+    const dataTopTracki = await resTopTracki.json();
+
+    if (dataTopTracki.tracks && dataTopTracki.tracks.length > 0) {
+      const top = dataTopTracki.tracks[0];
+      console.log('🏆 Top track:', top.name, '— popularność:', top.popularity);
+
+      // Wpisz top track w sekcję trendów jeśli jest puste
+      document.querySelectorAll('.tn').forEach(el => {
+        if (el.textContent.trim() === 'Oczekiwanie na dane agenta') {
+          el.textContent = top.name;
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Błąd Spotify API:', error);
+  }
+}
+
+pobierzDaneSpotify();
+</script>
 </body>
 </html>
